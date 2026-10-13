@@ -1,0 +1,469 @@
+CHOICE OF MODEL: 
+I chose to use Claude by Anthropic, because the UI is easy to understand and I find it useful for debugging. Additionally, the free version is quite capable.
+
+FIRST PROMPT: "Write a C program that implements a singly linked list with insertion, deletion, and traversal operations for adding, searching, and deleting."
+
+GENERATED RESPONSE:
+"
+#include <stdio.h>
+#include <stdlib.h>
+
+/* ---------- Data structures ---------- */
+
+typedef struct Node {
+    int data;
+    struct Node *next;
+} Node;
+
+typedef struct {
+    Node *head;
+    size_t size;
+} LinkedList;
+
+/* ---------- Helpers ---------- */
+
+static Node *create_node(int value) {
+    Node *node = malloc(sizeof *node);
+    if (!node) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    node->data = value;
+    node->next = NULL;
+    return node;
+}
+
+void list_init(LinkedList *list) {
+    list->head = NULL;
+    list->size = 0;
+}
+
+/* ---------- Insertion ---------- */
+
+/* Insert at the front: O(1) */
+void insert_front(LinkedList *list, int value) {
+    Node *node = create_node(value);
+    node->next = list->head;
+    list->head = node;
+    list->size++;
+}
+
+/* Insert at the end: O(n) */
+void insert_back(LinkedList *list, int value) {
+    Node *node = create_node(value);
+    if (!list->head) {
+        list->head = node;
+    } else {
+        Node *cur = list->head;
+        while (cur->next)
+            cur = cur->next;
+        cur->next = node;
+    }
+    list->size++;
+}
+
+/* Insert at a zero-based position. Returns 1 on success, 0 if out of range. */
+int insert_at(LinkedList *list, size_t index, int value) {
+    if (index > list->size)
+        return 0;
+    if (index == 0) {
+        insert_front(list, value);
+        return 1;
+    }
+    Node *prev = list->head;
+    for (size_t i = 0; i < index - 1; i++)
+        prev = prev->next;
+    Node *node = create_node(value);
+    node->next = prev->next;
+    prev->next = node;
+    list->size++;
+    return 1;
+}
+
+/* ---------- Searching ---------- */
+
+/* Returns zero-based index of first match, or -1 if not found. */
+int search(const LinkedList *list, int value) {
+    int index = 0;
+    for (const Node *cur = list->head; cur; cur = cur->next, index++) {
+        if (cur->data == value)
+            return index;
+    }
+    return -1;
+}
+
+/* ---------- Deletion ---------- */
+
+/* Delete first node containing value. Returns 1 if deleted, 0 if not found. */
+int delete_value(LinkedList *list, int value) {
+    Node *cur = list->head, *prev = NULL;
+    while (cur && cur->data != value) {
+        prev = cur;
+        cur = cur->next;
+    }
+    if (!cur)
+        return 0;
+    if (prev)
+        prev->next = cur->next;
+    else
+        list->head = cur->next;
+    free(cur);
+    list->size--;
+    return 1;
+}
+
+/* Delete node at zero-based index. Returns 1 on success, 0 if out of range. */
+int delete_at(LinkedList *list, size_t index) {
+    if (index >= list->size)
+        return 0;
+    Node *target;
+    if (index == 0) {
+        target = list->head;
+        list->head = target->next;
+    } else {
+        Node *prev = list->head;
+        for (size_t i = 0; i < index - 1; i++)
+            prev = prev->next;
+        target = prev->next;
+        prev->next = target->next;
+    }
+    free(target);
+    list->size--;
+    return 1;
+}
+
+/* ---------- Traversal ---------- */
+
+void print_list(const LinkedList *list) {
+    printf("[");
+    for (const Node *cur = list->head; cur; cur = cur->next)
+        printf("%d%s", cur->data, cur->next ? " -> " : "");
+    printf("] (size: %zu)\n", list->size);
+}
+
+/* ---------- Cleanup ---------- */
+
+void list_free(LinkedList *list) {
+    Node *cur = list->head;
+    while (cur) {
+        Node *next = cur->next;
+        free(cur);
+        cur = next;
+    }
+    list->head = NULL;
+    list->size = 0;
+}
+
+/* ---------- Interactive menu ---------- */
+
+static int read_int(const char *prompt, int *out) {
+    printf("%s", prompt);
+    if (scanf("%d", out) != 1) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF)
+            ;
+        printf("Invalid input.\n");
+        return 0;
+    }
+    return 1;
+}
+
+static void print_menu(void) {
+    printf("\n=== Singly Linked List ===\n"
+           "1. Insert at front\n"
+           "2. Insert at end\n"
+           "3. Insert at position\n"
+           "4. Search for a value\n"
+           "5. Delete by value\n"
+           "6. Delete by position\n"
+           "7. Display list\n"
+           "0. Exit\n");
+}
+
+int main(void) {
+    LinkedList list;
+    list_init(&list);
+
+    int choice, value, pos;
+    for (;;) {
+        print_menu();
+        if (!read_int("Choice: ", &choice))
+            continue;
+
+        switch (choice) {
+        case 1:
+            if (read_int("Value: ", &value)) {
+                insert_front(&list, value);
+                print_list(&list);
+            }
+            break;
+        case 2:
+            if (read_int("Value: ", &value)) {
+                insert_back(&list, value);
+                print_list(&list);
+            }
+            break;
+        case 3:
+            if (read_int("Position (0-based): ", &pos) &&
+                read_int("Value: ", &value)) {
+                if (pos >= 0 && insert_at(&list, (size_t)pos, value))
+                    print_list(&list);
+                else
+                    printf("Position out of range.\n");
+            }
+            break;
+        case 4:
+            if (read_int("Value to search: ", &value)) {
+                int idx = search(&list, value);
+                if (idx >= 0)
+                    printf("%d found at position %d.\n", value, idx);
+                else
+                    printf("%d not found.\n", value);
+            }
+            break;
+        case 5:
+            if (read_int("Value to delete: ", &value)) {
+                if (delete_value(&list, value))
+                    print_list(&list);
+                else
+                    printf("%d not found.\n", value);
+            }
+            break;
+        case 6:
+            if (read_int("Position to delete (0-based): ", &pos)) {
+                if (pos >= 0 && delete_at(&list, (size_t)pos))
+                    print_list(&list);
+                else
+                    printf("Position out of range.\n");
+            }
+            break;
+        case 7:
+            print_list(&list);
+            break;
+        case 0:
+            list_free(&list);
+            printf("Goodbye!\n");
+            return 0;
+        default:
+            printf("Unknown option.\n");
+        }
+    }
+}
+" 
+
+SECOND PROMPT: "I  would like the program to accept command line arguments and support the methods insertAtBeginning, insertAtTheEnd, deleteNode, findNode, and displayLinkedList."
+
+SECOND RESPONSE: "
+
+#include <errno.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* ---------- Data structures ---------- */
+
+typedef struct Node {
+    int data;
+    struct Node *next;
+} Node;
+
+typedef struct {
+    Node *head;
+    size_t size;
+} LinkedList;
+
+static Node *createNode(int value) {
+    Node *node = malloc(sizeof *node);
+    if (!node) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    node->data = value;
+    node->next = NULL;
+    return node;
+}
+
+static void initLinkedList(LinkedList *list) {
+    list->head = NULL;
+    list->size = 0;
+}
+
+/* ---------- Operations ---------- */
+
+/* Insert a new node at the front of the list: O(1) */
+void insertAtBeginning(LinkedList *list, int value) {
+    Node *node = createNode(value);
+    node->next = list->head;
+    list->head = node;
+    list->size++;
+}
+
+/* Insert a new node at the end of the list: O(n) */
+void insertAtTheEnd(LinkedList *list, int value) {
+    Node *node = createNode(value);
+    if (!list->head) {
+        list->head = node;
+    } else {
+        Node *cur = list->head;
+        while (cur->next)
+            cur = cur->next;
+        cur->next = node;
+    }
+    list->size++;
+}
+
+/* Delete the first node holding value. Returns 1 if deleted, 0 if not found. */
+int deleteNode(LinkedList *list, int value) {
+    Node *cur = list->head, *prev = NULL;
+    while (cur && cur->data != value) {
+        prev = cur;
+        cur = cur->next;
+    }
+    if (!cur)
+        return 0;
+    if (prev)
+        prev->next = cur->next;
+    else
+        list->head = cur->next;
+    free(cur);
+    list->size--;
+    return 1;
+}
+
+/* Returns the zero-based position of the first node holding value, or -1. */
+int findNode(const LinkedList *list, int value) {
+    int index = 0;
+    for (const Node *cur = list->head; cur; cur = cur->next, index++) {
+        if (cur->data == value)
+            return index;
+    }
+    return -1;
+}
+
+/* Print every node from head to tail. */
+void displayLinkedList(const LinkedList *list) {
+    if (!list->head) {
+        printf("List is empty (size: 0)\n");
+        return;
+    }
+    for (const Node *cur = list->head; cur; cur = cur->next)
+        printf("%d -> ", cur->data);
+    printf("NULL (size: %zu)\n", list->size);
+}
+
+static void freeLinkedList(LinkedList *list) {
+    Node *cur = list->head;
+    while (cur) {
+        Node *next = cur->next;
+        free(cur);
+        cur = next;
+    }
+    list->head = NULL;
+    list->size = 0;
+}
+
+/* ---------- Command-line handling ---------- */
+
+static void printUsage(const char *prog) {
+    fprintf(stderr,
+        "Usage: %s <command> [value] [<command> [value] ...]\n"
+        "\n"
+        "Commands (executed left to right on one in-memory list):\n"
+        "  insertAtBeginning <value>   Insert value at the front\n"
+        "  insertAtTheEnd <value>      Insert value at the end\n"
+        "  deleteNode <value>          Delete first node holding value\n"
+        "  findNode <value>            Report the position of value\n"
+        "  displayLinkedList           Print the list\n"
+        "  help                        Show this message\n"
+        "\n"
+        "Example:\n"
+        "  %s insertAtTheEnd 10 insertAtTheEnd 20 insertAtBeginning 5 \\\n"
+        "      displayLinkedList findNode 20 deleteNode 10 displayLinkedList\n",
+        prog, prog);
+}
+
+/* Parse a strict base-10 int. Returns 1 on success, 0 on failure. */
+static int parseInt(const char *s, int *out) {
+    char *end;
+    errno = 0;
+    long v = strtol(s, &end, 10);
+    if (end == s || *end != '\0' || errno == ERANGE || v < INT_MIN || v > INT_MAX)
+        return 0;
+    *out = (int)v;
+    return 1;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printUsage(argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    LinkedList list;
+    initLinkedList(&list);
+    int status = EXIT_SUCCESS;
+
+    for (int i = 1; i < argc && status == EXIT_SUCCESS; i++) {
+        const char *cmd = argv[i];
+        int value;
+
+        if (strcmp(cmd, "help") == 0 || strcmp(cmd, "--help") == 0 ||
+            strcmp(cmd, "-h") == 0) {
+            printUsage(argv[0]);
+        } else if (strcmp(cmd, "displayLinkedList") == 0) {
+            displayLinkedList(&list);
+        } else if (strcmp(cmd, "insertAtBeginning") == 0 ||
+                   strcmp(cmd, "insertAtTheEnd") == 0 ||
+                   strcmp(cmd, "deleteNode") == 0 ||
+                   strcmp(cmd, "findNode") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: '%s' requires an integer value.\n", cmd);
+                status = EXIT_FAILURE;
+                break;
+            }
+            if (!parseInt(argv[i + 1], &value)) {
+                fprintf(stderr, "Error: '%s' is not a valid integer.\n", argv[i + 1]);
+                status = EXIT_FAILURE;
+                break;
+            }
+            i++; /* consume the value argument */
+
+            if (strcmp(cmd, "insertAtBeginning") == 0) {
+                insertAtBeginning(&list, value);
+                printf("Inserted %d at the beginning.\n", value);
+            } else if (strcmp(cmd, "insertAtTheEnd") == 0) {
+                insertAtTheEnd(&list, value);
+                printf("Inserted %d at the end.\n", value);
+            } else if (strcmp(cmd, "deleteNode") == 0) {
+                if (deleteNode(&list, value))
+                    printf("Deleted %d.\n", value);
+                else
+                    printf("%d not found; nothing deleted.\n", value);
+            } else { /* findNode */
+                int pos = findNode(&list, value);
+                if (pos >= 0)
+                    printf("%d found at position %d.\n", value, pos);
+                else
+                    printf("%d not found.\n", value);
+            }
+        } else {
+            fprintf(stderr, "Error: unknown command '%s'.\n\n", cmd);
+            printUsage(argv[0]);
+            status = EXIT_FAILURE;
+        }
+    }
+
+    freeLinkedList(&list);
+    return status;
+}
+
+"
+
+
+
+CODE ANALYSIS:
+
+The code compiles successfully without debugging. I did not provide as many specifications as the lab requirements did, so some behavior is different from the Part 4 expectations. However, with a somewhat vague prompt, Claude provided an impressive implementation and invented its own front-end workflow to display the Linked List operations to users.
+
+Because there were no bugs in the original response, there were no clear issues to debug and work through. Still, I provided a second pronpt "I would like the program to accept command line arguments and support the methods insertAtBeginning, insertAtTheEnd, deleteNode, findNode, and displayLinkedList."to see if Claude could successfully edit its own work. Once again, the LLM provided a clever implementation that compiled successfully on the first run.This time, it accepted new elements to the linked list with command line arguments, rather than using scanf as it had before. Although this is not the completely desired behavior, it is certainly a successful implementation, given the specifications that I provided in my prompts.

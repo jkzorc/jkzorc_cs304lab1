@@ -1,0 +1,16 @@
+GDB Comands:
+
+1. list
+This command displayed the first 10 lines in my program. This allows me to see a wider view of what I am executing (rather than just the single line that I am currently viewing). I ran this first, so it was easier to understand the program before beginning debugging.
+
+2. run
+This command runs the program, so it is the first command that we should use when debugging our program. Once I ran the program using this command, I was able to view the first line in the program.
+
+3. next 
+This command continues on to the next line in the program. After running the program, I was viewing the first line, so using the "next" command allows me to inspect other lines and continue through execution. 
+
+4. break
+This command allowed me to place a breakpoint at the line I was currently viewing. With the breakpoint placed, execution stopped and I could inspect variables and the call stack.
+
+5. continue
+This command let me continue to execute the program after hitting a break point. It continues execution until the next set break point, or until the program is done.
